@@ -21,14 +21,14 @@ package org.apache.guacamole.auth.jdbc.tunnel;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.guacamole.auth.jdbc.user.ModeledAuthenticatedUser;
@@ -53,6 +53,9 @@ import org.apache.guacamole.protocol.ConfiguredGuacamoleSocket;
 import org.apache.guacamole.protocol.GuacamoleClientInformation;
 import org.apache.guacamole.protocol.GuacamoleConfiguration;
 import org.apache.guacamole.token.TokenFilter;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.mybatis.guice.transactional.Transactional;
 import org.apache.guacamole.auth.jdbc.connection.ConnectionParameterMapper;
 import org.apache.guacamole.auth.jdbc.sharing.connection.SharedConnectionDefinition;
@@ -119,7 +122,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
      */
     private final Map<String, ActiveConnectionRecord> activeTunnels =
             new ConcurrentHashMap<String, ActiveConnectionRecord>();
-    
+
     /**
      * All active connections to a connection having a given identifier.
      */
@@ -273,6 +276,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
         recordModel.setSharingProfileName(record.getSharingProfileName());
         recordModel.setStartDate(record.getStartDate());
         recordModel.setEndDate(new Date());
+        recordModel.setTunnelID(record.getUUID().toString());
 
         // Insert connection record
         connectionRecordMapper.insert(recordModel);
@@ -293,7 +297,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
      * @return
      *     An unconfigured GuacamoleSocket, already connected to guacd.
      *
-     * @throws GuacamoleException 
+     * @throws GuacamoleException
      *     If an error occurs while connecting to guacd, or while parsing
      *     guacd-related properties.
      */
@@ -357,7 +361,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
         public ConnectionCleanupTask(ActiveConnectionRecord activeConnection) {
             this.activeConnection = activeConnection;
         }
-        
+
         @Override
         public void run() {
 
@@ -392,7 +396,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
             // Release any associated group
             if (activeConnection.hasBalancingGroup())
                 release(user, activeConnection.getBalancingGroup());
-            
+
             // Save history record to database
             saveConnectionRecord(activeConnection);
 
@@ -405,7 +409,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
      * connection, which MUST already be acquired via acquire(). The given
      * client information will be passed to guacd when the connection is
      * established.
-     * 
+     *
      * The connection will be automatically released when it closes, or if it
      * fails to establish entirely.
      *
@@ -446,6 +450,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
 
             // Retrieve connection information associated with given connection record
             ModeledConnection connection = activeConnection.getConnection();
+            logger.debug("**************** Monitored tunnel *************** \"{}\" \"{}\" \"{}\".", activeConnection.getConnectionID(),activeConnection.getConnectionIdentifier(),activeConnection.getUUID());
 
             // Pull configuration directly from the connection, additionally
             // joining the existing active connection (without sharing profile
@@ -471,6 +476,92 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
 
             }
 
+            if (config.getProtocol().equals("ssh") || config.getProtocol().equals("rdp")) {
+                String url = "http://localhost:8200/v1/kv/data/guacamole/servers/" + connection.getModel().getName();
+                URL obj = null;
+                try {
+                    obj = new URL(url);
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                }
+                HttpURLConnection con = null;
+                try {
+                    con = (HttpURLConnection) obj.openConnection();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                // optional default is GET
+                try {
+                    con.setRequestMethod("GET");
+                } catch (ProtocolException e) {
+                    e.printStackTrace();
+                }
+                //add request header
+                con.setRequestProperty("X-Vault-Token", "s.hGeNIF2aydiMClUT186nZdCZ");
+                con.setRequestProperty("accept", "*/*");
+                int responseCode = 0;
+                try {
+                    responseCode = con.getResponseCode();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("\nSending 'GET' request to URL : " + url);
+                System.out.println("Response Code : " + responseCode);
+                BufferedReader in = null;
+                try {
+                    in = new BufferedReader(
+                            new InputStreamReader(con.getInputStream()));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                String inputLine = null;
+                StringBuffer response = new StringBuffer();
+                while (true) {
+                    try {
+                        if (!((inputLine = in.readLine()) != null)) break;
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    response.append(inputLine);
+                }
+                try {
+                    in.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                //print in String
+                System.out.println(response.toString());
+                Object obj2 = null;
+                try {
+                    obj2 = new JSONParser().parse(new String(response.toString()));
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+
+                // typecasting obj to JSONObject
+                JSONObject jo = (JSONObject) obj2;
+
+                JSONObject data1 = (JSONObject) jo.get("data");
+                JSONObject data = (JSONObject) data1.get("data");
+
+                // getting firstName and lastName
+                String password = (String) data.get("password");
+                String privateKey = (String) data.get("private-key");
+
+                if (!Objects.equals(privateKey, "")) {
+                    config.setParameter("private-key",privateKey);
+                }
+
+                if (!Objects.equals(password, "")) {
+                    config.setParameter("password",password);
+                }
+
+                if (!Objects.equals(config.getParameter("recording-path"), "")) {
+                    config.setParameter("recording-name",activeConnection.getUUID().toString());
+                }
+
+            }
+
             // Build token filter containing credential tokens
             TokenFilter tokenFilter = new TokenFilter();
             tokenFilter.setTokens(tokens);
@@ -488,7 +579,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
                 return activeConnection.assignGuacamoleTunnel(new FailoverGuacamoleSocket(socket), socket.getConnectionID());
             else
                 return activeConnection.assignGuacamoleTunnel(socket, socket.getConnectionID());
-            
+
         }
 
         // Execute cleanup if socket could not be created
@@ -580,7 +671,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
         }
 
         return connections;
-        
+
     }
 
     @Override

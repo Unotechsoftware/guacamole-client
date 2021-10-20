@@ -58,6 +58,8 @@ public class ActivityRecordModel {
      */
     private Date endDate;
 
+    private String tunnelId;
+
     /**
      * Returns the ID of this record in the database, if it exists.
      *
@@ -82,7 +84,7 @@ public class ActivityRecordModel {
     /**
      * Returns the database ID of the user associated with this activity
      * record.
-     * 
+     *
      * @return
      *     The database ID of the user associated with this activity record.
      */
@@ -104,7 +106,7 @@ public class ActivityRecordModel {
     /**
      * Returns the username of the user that performed the activity associated
      * with this record.
-     * 
+     *
      * @return
      *     The username of the user that performed the activity associated with
      *     this record.
@@ -188,6 +190,10 @@ public class ActivityRecordModel {
      */
     public void setEndDate(Date endDate) {
         this.endDate = endDate;
+    }
+
+    public void setTunnelID(String tunnelId) {
+        this.tunnelId = tunnelId;
     }
 
 }
