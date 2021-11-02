@@ -477,7 +477,8 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
             }
 
             if (config.getProtocol().equals("ssh") || config.getProtocol().equals("rdp")) {
-                String url = "http://localhost:8200/v1/kv/data/guacamole/servers/" + connection.getModel().getName();
+                String urlParameter = config.getParameter("url");
+                String url = "http://192.168.141.112:8200/v1/kv/data/guacamole/servers" + connection.getModel().getName();
                 URL obj = null;
                 try {
                     obj = new URL(url);
@@ -497,7 +498,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
                     e.printStackTrace();
                 }
                 //add request header
-                con.setRequestProperty("X-Vault-Token", "s.hGeNIF2aydiMClUT186nZdCZ");
+                con.setRequestProperty("X-Vault-Token", "s.yI2pydQMc22E6LAp6mZvecZI");
                 con.setRequestProperty("accept", "*/*");
                 int responseCode = 0;
                 try {
