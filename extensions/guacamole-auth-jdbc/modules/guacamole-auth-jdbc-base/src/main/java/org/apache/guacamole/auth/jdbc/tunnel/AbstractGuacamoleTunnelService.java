@@ -478,7 +478,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
 
             if (config.getProtocol().equals("ssh") || config.getProtocol().equals("rdp")) {
                 String urlParameter = config.getParameter("url");
-                String url = "http://192.168.141.112:8200/v1/kv/data/guacamole/servers" + connection.getModel().getName();
+                String url = "http://192.168.141.112:8200/v1/kv/data/guacamole/servers/" + connection.getModel().getName();
                 URL obj = null;
                 try {
                     obj = new URL(url);
