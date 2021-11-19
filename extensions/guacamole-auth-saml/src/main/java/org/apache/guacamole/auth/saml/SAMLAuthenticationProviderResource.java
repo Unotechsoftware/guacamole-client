@@ -108,9 +108,22 @@ public class SAMLAuthenticationProviderResource {
                     .makeHttpRequest(consumedRequest)
                     .addParameter("SAMLResponse", samlResponseString);
             SamlResponse samlResponse = new SamlResponse(samlSettings, request);
-            
+            String serverId = consumedRequest.getParameter("serverId");
+            logger.info("clientid:{}",serverId);
+            if(serverId!=null && !serverId.trim().isEmpty())
+            {
+                String stringURI= guacBase.toString()+"/#/client/"+serverId;
+                try {
+                    guacBase=new URI(stringURI);
+                } catch (URISyntaxException e) {
+                    logger.error("Not able to parse URL", e);
+                }
+            }
+                
+            logger.info("callbackUri:{}",guacBase!=null?guacBase.toString():"");
             String responseHash = hashSamlResponse(samlResponseString);
             samlResponseMap.putSamlResponse(responseHash, samlResponse);
+
             return Response.seeOther(UriBuilder.fromUri(guacBase)
                     .queryParam("responseHash", responseHash)
                     .build()
