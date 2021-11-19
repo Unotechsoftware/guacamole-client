@@ -1,3 +1,9 @@
 *~
 target/
 .idea/
+.project
+.settings/*
+doc/*/.settings/*
+extensions/.settings/*
+*.classpath
+*.settings*
