@@ -531,7 +531,7 @@ public abstract class AbstractGuacamoleTunnelService implements GuacamoleTunnelS
                     e.printStackTrace();
                 }
                 //print in String
-                System.out.println(response.toString());
+                //System.out.println(response.toString());
                 Object obj2 = null;
                 try {
                     obj2 = new JSONParser().parse(new String(response.toString()));
