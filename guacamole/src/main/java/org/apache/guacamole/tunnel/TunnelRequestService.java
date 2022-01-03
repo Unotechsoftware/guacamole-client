@@ -164,7 +164,7 @@ public class TunnelRequestService {
         List<String> imageMimetypes = request.getImageMimetypes();
         if (imageMimetypes != null)
             info.getImageMimetypes().addAll(imageMimetypes);
-        
+
         // Set timezone if provided
         String timezone = request.getTimezone();
         if (timezone != null && !timezone.isEmpty())
@@ -308,10 +308,11 @@ public class TunnelRequestService {
 
         };
 
+        logger.debug("**************** Monitored tunnel *************** \"{}\".", monitoredTunnel.getUUID());
         // Associate tunnel with session
         session.addTunnel(monitoredTunnel);
         return monitoredTunnel;
-        
+
     }
 
     /**
@@ -349,6 +350,7 @@ public class TunnelRequestService {
 
             // Notify listeners to allow connection to be vetoed
             fireTunnelConnectEvent(authenticatedUser, authenticatedUser.getCredentials(), tunnel);
+            logger.debug("**************** Monitored tunnel *************** \"{}\".", tunnel.getUUID());
 
             // Associate tunnel with session
             return createAssociatedTunnel(tunnel, authToken, session, userContext, type, id);
